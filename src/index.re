@@ -6,16 +6,26 @@ type direction =
   | Top 
   | Bottom
 
+type fruitType = 
+  | Cocunut
+  | Banana;
+
 type fruitState = {
   direction: direction,
   isSliced: bool,
   xPos: int,
-  yPos: int
-}
+  yPos: int,
+  slicedOffset: int,
+  fruitType: fruitType,
+};
+
 type images = {
   coconut: imageT,
   coconutHalfOne: imageT,
   coconutHalfTwo: imageT,
+  banana: imageT,
+  bananaHalfOne: imageT,
+  bananaHalfTwo: imageT,
 }
 type state = {
   frameCounter: int,
@@ -26,26 +36,31 @@ let screenWidth = 500
 let screenHeight = 500
 let fruitHeight = 50
 let fruitWidth = 50
-
 let setup = (env) => {
   Env.size(~width=screenWidth, ~height=screenHeight, env);
   let coconutImg = Draw.loadImage(~filename="assets/coconut.png", env);
   let coconutHalfOneImg = Draw.loadImage(~filename="assets/coconut_half_1.png", env);
   let coconutHalfTwoImg = Draw.loadImage(~filename="assets/coconut_half_2.png", env);
+  let bananaImg = Draw.loadImage(~filename="assets/banana.png", env);
+  let bananaHalfOneImg = Draw.loadImage(~filename="assets/banana_half_2_small.png", env);
+  let bananaHalfTwoImg = Draw.loadImage(~filename="assets/banana_half_1.png", env);
   {
     frameCounter: 0,
     fruits: [
-      { direction: Top, yPos: 100, isSliced: false, xPos: 100 },
-      { direction: Top, yPos: 200, isSliced: false, xPos: 200 },
-      { direction: Top, yPos: 300, isSliced: false, xPos: 300 },
-      { direction: Top, yPos: 400, isSliced: false, xPos: 400 },
-      { direction: Top, yPos: 500, isSliced: false, xPos: 500 },
-      { direction: Top, yPos: 100, isSliced: false, xPos: 0 },
+      { direction: Top, slicedOffset: 0, yPos: 100, isSliced: false, xPos: 100, fruitType: Cocunut },
+      { direction: Top, slicedOffset: 0, yPos: 200, isSliced: false, xPos: 200, fruitType: Banana },
+      { direction: Top, slicedOffset: 0, yPos: 300, isSliced: false, xPos: 300, fruitType: Banana },
+      { direction: Top, slicedOffset: 0, yPos: 400, isSliced: false, xPos: 400, fruitType: Cocunut },
+      { direction: Top, slicedOffset: 0, yPos: 500, isSliced: false, xPos: 500, fruitType: Banana },
+      { direction: Top, slicedOffset: 0, yPos: 100, isSliced: false, xPos: 0, fruitType: Cocunut },
     ],
     images: {
       coconut: coconutImg,
       coconutHalfOne: coconutHalfOneImg,
       coconutHalfTwo: coconutHalfTwoImg,
+      banana: bananaImg,
+      bananaHalfOne: bananaHalfOneImg,
+      bananaHalfTwo: bananaHalfTwoImg,
     }
   };
 };
@@ -61,15 +76,9 @@ let isFruitMouseColliding = (fruitXPos, fruitYPos, mouseX, mouseY) => {
 
 let draw = (state: state, env) => {
   Draw.background(Utils.color(~r=255, ~g=217, ~b=229, ~a=255), env);
-  /* print_endline(_state);
-  print_endline(string_of_int(state.frameCounter));
-   */
-  /* let (mouseX, mouseY) as squarePos = mousePressed(env) */
+  
   let isClicked = mousePressed(env)
   let (mouseX, mouseY) = pmouse(env);
-  /* print_endline(string_of_bool(isClicked));
-  print_endline(string_of_int(mouseX));
-  print_endline(string_of_int(mouseY)); */
 
   let speed = 4
   let newFruits = List.map(
@@ -81,18 +90,13 @@ let draw = (state: state, env) => {
         | (true, false) => isFruitMouseColliding(fruit.xPos, fruit.yPos, mouseX, mouseY)
       }
 
-
-      print_endline(string_of_bool(isClicked));
-
       let newDirection = 
       switch(fruit.yPos) {
         | _idc when fruit.yPos > (screenHeight - fruitHeight) && !fruit.isSliced => Top
         | _idc when fruit.yPos < 0 => Bottom
         | _ => fruit.direction
       }
-      /*
-      let newYPos = fruit.yPos + 20 * (state.frameCounter / 1000) - 10 * (state.frameCounter / 1000);
-      */
+
       let newYPos =
       switch (newDirection) {
       | Top => fruit.yPos - speed
@@ -102,7 +106,8 @@ let draw = (state: state, env) => {
         ...fruit,
         yPos: newYPos,
         isSliced: newIsSliced,
-        direction: newDirection
+        direction: newDirection,
+        slicedOffset: fruit.isSliced ? fruit.slicedOffset + 1 : fruit.slicedOffset,
       }
     },
     state.fruits
@@ -110,21 +115,39 @@ let draw = (state: state, env) => {
 
   List.iter(
     (fruit) => {
-      /* 
-      let rColor = fruit.isSliced ? 10 : 250
-      Draw.fill(Utils.color(~r=rColor, ~g=166, ~b=244, ~a=255), env);
-      Draw.rect(~pos=(fruit.xPos, fruit.yPos), ~width=fruitWidth, ~height=fruitHeight, env); */
-
-      /* print_endline(string_of_bool(fruit.isSliced)) */
       let itDoesntMakeSense = if (!fruit.isSliced) {
-        Draw.image(state.images.coconut, ~pos =
+        let imgSrc = 
+        switch(fruit.fruitType) {
+          | Banana => state.images.banana
+          | Cocunut => state.images.coconut
+        }
+        Draw.image(imgSrc, ~pos =
           (fruit.xPos, fruit.yPos),~width=fruitWidth, ~height=fruitHeight, env);
       } else {
-        Draw.image(state.images.coconutHalfOne, ~pos =
-          (fruit.xPos + 10, fruit.yPos + 10), ~width=fruitWidth, ~height=fruitHeight, env);
+        let leftHalfImgSrc =
+        switch(fruit.fruitType) {
+          | Banana => state.images.bananaHalfOne
+          | Cocunut => state.images.coconutHalfOne
+        }
+        let rightHalfImgSrc =
+        switch(fruit.fruitType) {
+          | Banana => state.images.bananaHalfTwo
+          | Cocunut => state.images.coconutHalfTwo
+        }
+        let randomDivNumber = 3
+        Draw.image(leftHalfImgSrc, ~pos = (
+          fruit.xPos + 10 + (fruit.slicedOffset / randomDivNumber), fruit.yPos + 10),
+          ~width=fruitWidth,
+          ~height=fruitHeight,
+          env
+        );
 
-        Draw.image(state.images.coconutHalfTwo, ~pos =
-          (fruit.xPos, fruit.yPos),~width=fruitWidth, ~height=fruitHeight, env);
+        Draw.image(rightHalfImgSrc, ~pos = (
+          fruit.xPos - (fruit.slicedOffset / randomDivNumber), fruit.yPos),
+          ~width=fruitWidth,
+          ~height=fruitHeight,
+          env
+        );
       }
       
     },
